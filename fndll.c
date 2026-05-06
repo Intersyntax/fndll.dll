@@ -83,8 +83,10 @@ void Generate(LPCCH filename)
 	fprintf(f,".CODE\n\n");
 	for (int i=0;i<entryCount;++i)
 	{
-		char* l=entries[i].name;
-		for(char *p=l;*p;p++)*p=tolower(*p);
+		char l[0x100];
+		strcpy_s(l,sizeof(l),entries[i].name);
+		for(char*p=l;*p;++p)*p=tolower(*p);
+
 		fprintf(f,"; https://ntdoc.m417z.com/%s\n",l);
 		fprintf(f,"%s PROC\n",entries[i].name);
 		fprintf(f,"   mov r10, rcx\n");
