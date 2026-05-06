@@ -3,6 +3,10 @@
 #include <string.h>
 #include <stdlib.h>
 
+typedef NTSTATUS (NTAPI* pRtlGetVersion) (PRTL_OSVERSIONINFOW);
+
+static HMODULE hNtDll=NULL;
+
 typedef struct
 {
 	char name[256];
@@ -12,7 +16,7 @@ typedef struct
 SyscallEntry* entries=NULL;
 int entryCount,entryCapacity=0;
 
-void AddEntry(LPCCH name, DWORD ssn)
+void AddEntry(LPCCH name,DWORD ssn)
 {
 	if (entryCount >= entryCapacity)
 	{
@@ -29,7 +33,7 @@ void AddEntry(LPCCH name, DWORD ssn)
 	++entryCount;
 }
 
-void Extract(HMODULE hNtDll)
+void Extract()
 {
 	PBYTE base=(PBYTE)hNtDll;
 	PIMAGE_DOS_HEADER dos=(PIMAGE_DOS_HEADER)base;
@@ -67,6 +71,14 @@ void Generate(LPCCH filename)
 		return;
 	}
 
+	pRtlGetVersion RtlGetVersion=(pRtlGetVersion)GetProcAddress(hNtDll,"RtlGetVersion");
+	RTL_OSVERSIONINFOW osvi={0};
+	osvi.dwOSVersionInfoSize=sizeof(osvi);
+	if (RtlGetVersion(&osvi)==0)
+		fprintf(f,"; Stubs Generated For Windows %u.%u.%u\n",
+			osvi.dwMajorVersion,
+			osvi.dwMinorVersion,
+			osvi.dwBuildNumber);
 	fprintf(f,"; Total Syscalls: %d\n\n",entryCount);
 	fprintf(f,".CODE\n\n");
 	for (int i=0;i<entryCount;++i)
@@ -87,9 +99,9 @@ void Generate(LPCCH filename)
 int main()
 {
 	printf("Hi\n");
-	HMODULE hNtDll=GetModuleHandleA("ntdll.dll");
+	hNtDll=GetModuleHandleA("ntdll.dll");
 	printf("ntdll.dll at: 0x%p\n\n",hNtDll);
-	Extract(hNtDll);
+	Extract();
 	printf("\nTotal functions with syscall insns: %d\n",entryCount);
 	if (entryCount > 0)
 	{
